@@ -23,13 +23,14 @@ Built using **Python**, **Tkinter**, **PyCryptodome**, **qrcode**, and **OpenCV*
 
 ## 🔁 Workflow
 
-```mermaid
-graph TD
-    A[User selects file + password] --> B[AES Encryption]
-    B --> C[Password encoded into QR Code]
-    C --> D[Share Encrypted File + QR Code]
-    D --> E[Receiver scans QR or enters password]
-    E --> F[AES Decryption & File Saved]
+1. User selects a file and enters a password
+2. File is encrypted using AES-256
+3. Password is encoded into a QR code
+4. Encrypted file and QR code are shared
+5. Receiver either:
+   - Scans QR code using webcam, OR
+   - Manually enters password
+6. File is decrypted and saved in `uploads/`
 
 ## 🛠️ Installation
 Clone the repository:
