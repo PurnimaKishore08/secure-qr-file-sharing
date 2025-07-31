@@ -1,37 +1,43 @@
-# encryption.py
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
-from Crypto.Util.Padding import pad, unpad
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
 import os
-import base64
+import hashlib
 
-UPLOAD_DIR = "uploads"
+def get_key(password):
+    return hashlib.sha256(password.encode()).digest()
 
-def encrypt_file(file, password):
-    key = password.encode('utf-8').ljust(32, b'0')[:32]  # Ensure 32 bytes for AES-256
-    iv = get_random_bytes(16)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
+def encrypt_file(input_path, output_path, password):
+    key = get_key(password)
+    iv = os.urandom(16)
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
+    encryptor = cipher.encryptor()
 
-    data = file.read()
-    ct_bytes = cipher.encrypt(pad(data, AES.block_size))
+    with open(input_path, "rb") as f:
+        data = f.read()
 
-    filename = os.path.join(UPLOAD_DIR, "encrypted_" + file.name)
-    with open(filename, 'wb') as f:
-        f.write(iv + ct_bytes)
+    padder = padding.PKCS7(128).padder()
+    padded = padder.update(data) + padder.finalize()
+    encrypted = encryptor.update(padded) + encryptor.finalize()
 
-    return filename, password
+    with open(output_path, "wb") as f:
+        f.write(iv + encrypted)
 
-def decrypt_file(file, password):
-    key = password.encode('utf-8').ljust(32, b'0')[:32]
-    data = file.read()
-    iv = data[:16]
-    ct = data[16:]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    pt = unpad(cipher.decrypt(ct), AES.block_size)
+def decrypt_file(input_path, output_path, password):
+    key = get_key(password)
+    backend = default_backend()
 
-    filename = os.path.join(UPLOAD_DIR, "decrypted_" + file.name)
-    with open(filename, 'wb') as f:
-        f.write(pt)
+    with open(input_path, "rb") as f:
+        iv = f.read(16)
+        encrypted_data = f.read()
 
-    return filename
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
+    decryptor = cipher.decryptor()
+    decrypted_padded = decryptor.update(encrypted_data) + decryptor.finalize()
 
+    unpadder = padding.PKCS7(128).unpadder()
+    data = unpadder.update(decrypted_padded) + unpadder.finalize()
+
+    with open(output_path, "wb") as f:
+        f.write(data)

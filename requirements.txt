@@ -1,6 +1,5 @@
-# requirements.txt
 streamlit
-pycryptodome
 qrcode
-opencv-python
+pyzbar
 Pillow
+cryptography

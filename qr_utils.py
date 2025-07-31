@@ -1,19 +1,15 @@
-# qr_utils.py
 import qrcode
-import cv2
-import tempfile
-import os
+from pyzbar.pyzbar import decode
 from PIL import Image
 
-def generate_qr(data):
+def generate_qr(data, filename="qr_code.png"):
     img = qrcode.make(data)
-    temp_path = os.path.join(tempfile.gettempdir(), "qr_code.png")
-    img.save(temp_path)
-    return temp_path
+    img.save(filename)
+    return filename
 
-def decode_qr_from_image(image_file):
-    img = Image.open(image_file)
-    img_cv = cv2.cvtColor(cv2.imread(image_file.name), cv2.COLOR_BGR2GRAY)
-    detector = cv2.QRCodeDetector()
-    data, _, _ = detector.detectAndDecode(img_cv)
-    return data if data else None
+def decode_qr_from_image(image_path):
+    img = Image.open(image_path)
+    decoded = decode(img)
+    if decoded:
+        return decoded[0].data.decode("utf-8")
+    return None
