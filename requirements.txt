@@ -1,4 +1,5 @@
 streamlit
-cryptography
-qrcode[pil]
-Pillow
+opencv-python
+numpy
+pycryptodome
+qrcode
