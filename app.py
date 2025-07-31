@@ -1,78 +1,55 @@
+# app.py
 import streamlit as st
-
-# ---------------------- STYLING ----------------------
-st.set_page_config(page_title="Secure QR File Encryptor", layout="centered")
-
-custom_css = """
-<style>
-/* Input & Password Field */
-input, textarea, .stTextInput input {
-    color: white !important;
-    background-color: #1e1e1e !important;
-    border: 1px solid #555 !important;
-    border-radius: 8px !important;
-    padding: 0.5em;
-}
-
-input::placeholder {
-    color: #cccccc !important;
-}
-</style>
-
-"""
-
-st.markdown(custom_css, unsafe_allow_html=True)
-
-import streamlit as st
+from encryption import encrypt_file, decrypt_file
+from qr_utils import generate_qr, decode_qr_from_image
 import os
-from encryption import encrypt_data, decrypt_data
-from qr_utils import generate_qr, scan_qr
-
-st.set_page_config(page_title="Secure File QR App", layout="centered")
-st.title("🔐 Secure File Sharing via QR Code")
-
-mode = st.sidebar.radio("Select Mode", ["Encrypt & Generate QR", "Scan QR & Decrypt"])
+import base64
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-if mode == "Encrypt & Generate QR":
-    uploaded_file = st.file_uploader("Upload a file to encrypt", type=None)
-    password = st.text_input("Enter a password to encrypt", type="password")
+st.set_page_config(page_title="Secure QR File Sharing", layout="centered")
+st.title("🔐 Secure File Sharing using QR & AES Encryption")
+
+menu = ["Encrypt File", "Decrypt File"]
+choice = st.sidebar.selectbox("Select Action", menu)
+
+if choice == "Encrypt File":
+    st.subheader("🔒 Encrypt File")
+
+    uploaded_file = st.file_uploader("Upload any file", type=None)
+    password = st.text_input("Enter Password", type="password")
 
     if uploaded_file and password:
-        data = uploaded_file.read()
-        encrypted_data, key_hex = encrypt_data(data, password)
-        file_path = os.path.join(UPLOAD_DIR, uploaded_file.name + ".enc")
-
-        with open(file_path, "wb") as f:
-            f.write(encrypted_data)
-
-        payload = f"{file_path}||{key_hex}"
-        qr_path = generate_qr(payload)
-
+        output_path, key = encrypt_file(uploaded_file, password)
         st.success("File encrypted successfully!")
-        st.image(qr_path, caption="Scan this QR to decrypt", width=300)
-        st.download_button("Download Encrypted File", encrypted_data, file_name=uploaded_file.name + ".enc")
 
-elif mode == "Scan QR & Decrypt":
-    qr_image = st.file_uploader("Upload QR image (from sender)", type=["png", "jpg", "jpeg"])
-    password = st.text_input("Enter password to decrypt", type="password")
+        # Save and show QR
+        qr_path = generate_qr(key)
+        st.image(qr_path, caption="🔑 QR Code with Encryption Key")
 
-    if qr_image and password:
-        with open("scanned_qr.png", "wb") as f:
-            f.write(qr_image.read())
+        with open(output_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+            href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(output_path)}">⬇️ Download Encrypted File</a>'
+            st.markdown(href, unsafe_allow_html=True)
 
-        payload = scan_qr("scanned_qr.png")
-        if not payload:
-            st.error("QR code not recognized.")
+elif choice == "Decrypt File":
+    st.subheader("🔓 Decrypt File")
+
+    encrypted_file = st.file_uploader("Upload Encrypted File", type=None)
+    qr_image = st.file_uploader("Upload QR Code Image (with key)", type=["png", "jpg", "jpeg"])
+
+    if encrypted_file and qr_image:
+        password = decode_qr_from_image(qr_image)
+
+        if password:
+            output_path = decrypt_file(encrypted_file, password)
+            st.success("File decrypted successfully!")
+
+            with open(output_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+                href = f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(output_path)}">⬇️ Download Decrypted File</a>'
+                st.markdown(href, unsafe_allow_html=True)
         else:
-            try:
-                file_path, key_hex = payload.split("||")
-                with open(file_path.strip(), "rb") as f:
-                    encrypted_data = f.read()
-                decrypted_data = decrypt_data(encrypted_data, password, key_hex)
-                st.success("✅ File decrypted successfully!")
-                st.download_button("Download Decrypted File", decrypted_data, file_name="decrypted_file")
-            except Exception as e:
-                st.error(f"Decryption failed: {e}")
+            st.error("Failed to decode QR code. Please try another image.")
+

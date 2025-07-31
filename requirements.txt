@@ -1,4 +1,6 @@
+# requirements.txt
 streamlit
+pycryptodome
 qrcode
 opencv-python
-pycryptodome
+Pillow

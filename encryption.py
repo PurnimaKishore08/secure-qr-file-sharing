@@ -1,26 +1,37 @@
+# encryption.py
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Util.Padding import pad, unpad
+import os
+import base64
 
-def pad(data):
-    pad_len = 16 - len(data) % 16
-    return data + bytes([pad_len]) * pad_len
+UPLOAD_DIR = "uploads"
 
-def unpad(data):
-    return data[:-data[-1]]
-
-def encrypt_data(data, password):
-    salt = get_random_bytes(16)
-    key = PBKDF2(password, salt, dkLen=32, count=100000)
+def encrypt_file(file, password):
+    key = password.encode('utf-8').ljust(32, b'0')[:32]  # Ensure 32 bytes for AES-256
     iv = get_random_bytes(16)
     cipher = AES.new(key, AES.MODE_CBC, iv)
-    encrypted = cipher.encrypt(pad(data))
-    return salt + iv + encrypted, key.hex()
 
-def decrypt_data(enc_data, password, key_hex):
-    salt = enc_data[:16]
-    iv = enc_data[16:32]
-    ct = enc_data[32:]
-    key = bytes.fromhex(key_hex)
+    data = file.read()
+    ct_bytes = cipher.encrypt(pad(data, AES.block_size))
+
+    filename = os.path.join(UPLOAD_DIR, "encrypted_" + file.name)
+    with open(filename, 'wb') as f:
+        f.write(iv + ct_bytes)
+
+    return filename, password
+
+def decrypt_file(file, password):
+    key = password.encode('utf-8').ljust(32, b'0')[:32]
+    data = file.read()
+    iv = data[:16]
+    ct = data[16:]
     cipher = AES.new(key, AES.MODE_CBC, iv)
-    return unpad(cipher.decrypt(ct))
+    pt = unpad(cipher.decrypt(ct), AES.block_size)
+
+    filename = os.path.join(UPLOAD_DIR, "decrypted_" + file.name)
+    with open(filename, 'wb') as f:
+        f.write(pt)
+
+    return filename
+
