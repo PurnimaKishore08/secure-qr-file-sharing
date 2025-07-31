@@ -21,6 +21,10 @@ Built using **Python**, **Tkinter**, **PyCryptodome**, **qrcode**, and **OpenCV*
 
 ---
 
+## 🔗 Live Demo: secure-qr-file-sharing.onrender.com
+
+---
+
 ## 🔁 Workflow
 
 1. User selects a file and enters a password
