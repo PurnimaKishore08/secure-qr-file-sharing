@@ -1,5 +1,4 @@
 streamlit
 qrcode
-pyzbar
+pycryptodome
 Pillow
-cryptography

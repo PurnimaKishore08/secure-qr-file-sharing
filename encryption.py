@@ -1,43 +1,39 @@
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
-import os
-import hashlib
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from hashlib import sha256
 
-def get_key(password):
-    return hashlib.sha256(password.encode()).digest()
+def pad(data):
+    return data + b"\0" * (AES.block_size - len(data) % AES.block_size)
 
-def encrypt_file(input_path, output_path, password):
-    key = get_key(password)
-    iv = os.urandom(16)
-    backend = default_backend()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
-    encryptor = cipher.encryptor()
-
-    with open(input_path, "rb") as f:
+def encrypt_file(file_path, password):
+    key = sha256(password.encode()).digest()
+    with open(file_path, 'rb') as f:
         data = f.read()
+    data = pad(data)
+    iv = get_random_bytes(AES.block_size)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    encrypted = iv + cipher.encrypt(data)
 
-    padder = padding.PKCS7(128).padder()
-    padded = padder.update(data) + padder.finalize()
-    encrypted = encryptor.update(padded) + encryptor.finalize()
+    output_path = "encrypted_file.bin"
+    with open(output_path, "wb") as ef:
+        ef.write(encrypted)
 
-    with open(output_path, "wb") as f:
-        f.write(iv + encrypted)
+    return output_path, key.hex()
 
-def decrypt_file(input_path, output_path, password):
-    key = get_key(password)
-    backend = default_backend()
+def decrypt_file(file_path, password, key_hex):
+    key = sha256(password.encode()).digest()
+    if key.hex() != key_hex:
+        return None
 
-    with open(input_path, "rb") as f:
-        iv = f.read(16)
-        encrypted_data = f.read()
+    with open(file_path, 'rb') as f:
+        data = f.read()
+    iv = data[:AES.block_size]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    decrypted = cipher.decrypt(data[AES.block_size:])
+    decrypted = decrypted.rstrip(b"\0")
 
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
-    decryptor = cipher.decryptor()
-    decrypted_padded = decryptor.update(encrypted_data) + decryptor.finalize()
+    output_path = "decrypted_output"
+    with open(output_path, "wb") as df:
+        df.write(decrypted)
 
-    unpadder = padding.PKCS7(128).unpadder()
-    data = unpadder.update(decrypted_padded) + unpadder.finalize()
-
-    with open(output_path, "wb") as f:
-        f.write(data)
+    return output_path
