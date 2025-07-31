@@ -21,7 +21,7 @@ Built using **Python**, **Tkinter**, **PyCryptodome**, **qrcode**, and **OpenCV*
 
 ---
 
-## 🔗 Live Demo: secure-qr-file-sharing.onrender.com
+## 🔗 Live Demo: [secure-qr-file-sharing.onrender.com](https://secure-qr-file-sharing.onrender.com/)
 
 ---
 
